@@ -1,8 +1,10 @@
 # This file trains and tests a KNN classifier to detect spam vs. ham SMS messages
+# Requires Python 3.10+
 
 import os
 import math
 from random import shuffle
+import numpy as np
 
 # Color codes
 COLOR_DEFAULT = '\x1b[39m'
@@ -138,6 +140,7 @@ def calculate_sms_idf(vocabulary: list[str], sms: str, tokenized_sms_list: list[
 def calculate_n_dimensional_distance(p1: list[float], p2: list[float]) -> float:
     """
     Calculates the distance between two points in n-dimensional space
+    Uses numpy in order to be more efficient
 
     Args:
         p1 (list[float]): the first point
@@ -147,13 +150,9 @@ def calculate_n_dimensional_distance(p1: list[float], p2: list[float]) -> float:
     """
     if len(p1) != len(p2):
         raise ValueError('The two provided points do not have the same dimensionality')
-    squares_sum = 0
-    for i in range(len(p1)):
-        val1 = p1[i]
-        val2 = p2[i]
-        difference_sqaure = math.pow(val1 - val2, 2)
-        squares_sum += difference_sqaure
-    result = math.sqrt(squares_sum)
+    n1 = np.array(p1)
+    n2 = np.array(p2)
+    result = np.sqrt(np.sum((n1 - n2)**2))
     return result
 
 
@@ -226,9 +225,10 @@ def main():
 
         # Calculate the distance between this vector and the vector for every point in the training set
         distances = {}
+        print('doing calc')
         for training_sms, training_tf_idf in sms_tf_idf.items():
             distances[training_sms] = calculate_n_dimensional_distance(training_tf_idf, tf_idf)
-        
+        print('finish calc')
         # Sort dictionary by value and select the K lowest values
         # If spam/ham has the majority in the K lowest values, then that is our prediction
         distances = dict(sorted(distances.items(), key=lambda item: item[1]))
@@ -239,10 +239,10 @@ def main():
                 ham_count += 1
             else:
                 spam_count += 1
-            results[sms] = 0 if ham_count > spam_count else 1
-            print(f'{sms[:150]}...')
-            print('ham' if ham_count > spam_count else 'spam')
-            print()
+        results[sms] = 0 if ham_count > spam_count else 1
+        print(f'{sms[:150]}...')
+        print('ham' if ham_count > spam_count else 'spam')
+        print()
         
     # Results and performance metrics
     tp = 0
