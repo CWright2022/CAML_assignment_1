@@ -74,7 +74,7 @@ def get_tokens(sms_list: list[str]) -> list[str]:
     return tokens_list
 
 
-def calculate_probabilities(vocabulary: set[str], sms_tokens: list[str]) -> dict[str, float]:
+def calculate_probabilities(vocabulary: list[str], sms_tokens: list[str]) -> dict[str, float]:
     """
     Calculates the probabilities for each word given it is that type of message (spam/ham)
 
@@ -138,8 +138,7 @@ def main():
 
     ham_tokens = get_tokens(ham_list_train)
     spam_tokens = get_tokens(spam_list_train)
-
-    vocabulary = {token for token in (ham_tokens + spam_tokens)}
+    vocabulary = list(set(ham_tokens + spam_tokens))
 
     # probability for each word given the sms is ham
     ham_probabilities = calculate_probabilities(vocabulary, ham_tokens)
