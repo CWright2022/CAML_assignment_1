@@ -1,6 +1,7 @@
 # This file trains and tests a Naive Bayes Classifier to detect spam vs. ham SMS messages
 
 from random import shuffle
+import os
 
 # Color codes
 COLOR_DEFAULT = '\x1b[39m'
@@ -44,6 +45,8 @@ def load_data(data_filename: str) -> tuple[list[str], list[str]]:
     """
     ham_list = []
     spam_list = []
+    if not os.path.exists(data_filename):
+        raise FileNotFoundError(f'The file "{data_filename}" could not be found.')
     with open(data_filename, 'r') as f:
         for line in f:
             fields = line.strip().split('\t')
@@ -71,7 +74,7 @@ def get_tokens(sms_list: list[str]) -> list[str]:
     return tokens_list
 
 
-def calculate_probabilities(vocabulary: list[str], sms_tokens: list[str]) -> dict[str, float]:
+def calculate_probabilities(vocabulary: set[str], sms_tokens: list[str]) -> dict[str, float]:
     """
     Calculates the probabilities for each word given it is that type of message (spam/ham)
 
@@ -113,7 +116,11 @@ def calculate_posterior_probability(sms: str, prior_probability: float, probabil
 
 def main():
     # Training
-    ham_list, spam_list = load_data(DATA_FILENAME)
+    try:
+        ham_list, spam_list = load_data(DATA_FILENAME)
+    except FileNotFoundError as e:
+        print(e)
+        exit()
 
     # shuffle so training/testing split is random each time
     shuffle(ham_list)
@@ -190,6 +197,8 @@ def main():
     recall = tp / (tp + fn)
     f1_score = (2 * precision * recall) / (precision + recall)
 
+    print()
+    print('Metrics:')
     print(f'Accuracy: {accuracy*100:.2f}%')
     print(f'Precision: {precision*100:.2f}%')
     print(f'Recall: {recall*100:.2f}%')
