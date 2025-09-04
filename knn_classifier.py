@@ -101,7 +101,7 @@ def calculate_sms_tf(vocabulary: list[str], sms: str) -> list[float] | None:
     return term_frequency_list
 
 
-def calculate_sms_idf(vocabulary: list[str], sms: str, sms_list: list[str]) -> list[float] | None:
+def calculate_sms_idf(vocabulary: list[str], sms: str, tokenized_sms_list: list[list[str]]) -> list[float] | None:
     """
     Calculate the inverse document frequency for a given SMS message
     For each token in the vocabulary: log( (total # of SMS messages) / (# of messages this word appears in) ) for each word in this SMS
@@ -116,11 +116,22 @@ def calculate_sms_idf(vocabulary: list[str], sms: str, sms_list: list[str]) -> l
         Will return None if the given SMS has no tokens. For example, with certain cleaning methods an SMS will have no tokens
     """
     inverse_document_frequency_list = []
-    tokens = tokenize_sms(sms)
-    token_length = len(tokens)
+    tokenized_sms = tokenize_sms(sms)
+    token_length = len(tokenized_sms)
     if token_length == 0:
         return None
-    
+    document_total = len(tokenized_sms_list)
+    # Calculate idf for this sms
+    for token in vocabulary:
+        if token in tokenized_sms:
+            token_appearance_count = 0
+            for tokens in tokenized_sms_list:
+                if token in tokens:
+                    token_appearance_count += 1
+            inverse_document_frequency_list.append(math.log10(document_total / token_appearance_count))
+        else:
+            inverse_document_frequency_list.append(0)
+    return inverse_document_frequency_list
 
 
 def main():
@@ -149,7 +160,15 @@ def main():
 
     ham_tokens = get_tokens(ham_list_train)
     spam_tokens = get_tokens(spam_list_train)
+
+    # Convert to list so ordering stays consistent
+    # The order of the vocabulary is the order the tokens must show up in the frequency dictionaries
     vocabulary = list(set(ham_tokens + spam_tokens))
+
+    # Pre-calculate this for the idf function
+    tokenized_sms_list = []
+    for sms in list(sms_samples.keys()):
+        tokenized_sms_list.append(tokenize_sms(sms))
 
     # Calculate term frequencies and inverse document frequencies for each SMS in the training set
     sms_term_frequencies = {}
@@ -160,11 +179,12 @@ def main():
             continue
         sms_term_frequencies[sms] = sms_tf
 
-        sms_idf = calculate_sms_idf(vocabulary, sms, list(sms_samples.keys()))
+        sms_idf = calculate_sms_idf(vocabulary, sms, tokenized_sms_list)
+        if sms_idf is None:
+            continue
+        sms_inverse_document_frequencies[sms] = sms_idf
 
-
-
-
+    print(sms_inverse_document_frequencies)
 
 
 if __name__ == '__main__':
