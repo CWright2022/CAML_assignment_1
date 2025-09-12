@@ -16,7 +16,10 @@ COLOR_RED = '\x1b[31m'
 DATA_FILENAME = 'sms_data.txt'
 
 # K value to use for the KNN
-K = 1
+K = 9
+
+# Says to use cosine similarity between feature vectors or not
+USE_COSINE_SIMILARITY = True
 
 # proportion of messages that will be used for training. The remaining will be used for testing
 TRAINING_SPLIT = 0.8
@@ -131,18 +134,37 @@ def calculate_idf(vocabulary: list[str], tokenized_sms_list: list[list[str]]) ->
 
 def calculate_n_dimensional_distance(p1: npt.NDArray[np.float64], p2: npt.NDArray[np.float64]) -> float:
     """
-    Calculates the distance between two points in n-dimensional space
+    Calculates the distance between two points in n-dimensional space using euclidean geometry
     Uses numpy in order to be more efficient
 
     Args:
-        p1 (list[float]): the first point
-        p2 (list[float]): the second point
+        p1 (list[npt.NDArray[np.float64]]): the first point
+        p2 (list[npt.NDArray[np.float64]]): the second point
     Returns:
         float: The distance between the points
     """
     if len(p1) != len(p2):
         raise ValueError('The two provided points do not have the same dimensionality')
     result = np.sqrt(np.sum((p1 - p2)**2))
+    return result
+
+
+def calculate_cosine_similarity(p1: npt.NDArray[np.float64], p2: npt.NDArray[np.float64]) -> float:
+    """
+    Calculates the cosine similarity between two n-dimensional points
+
+    Args:
+        p1 (npt.NDArray[np.float64]): the first point
+        p2 (npt.NDArray[np.float64]): the second point
+    Returns:
+        float: the cosine similarity between the points
+    """
+    if len(p1) != len(p2):
+        raise ValueError('The two provided points do not have the same dimensionality')
+    denom = np.linalg.norm(p1) * np.linalg.norm(p2)
+    if denom == 0:
+        return 0
+    result = np.dot(p1, p2) / denom
     return result
 
 
@@ -221,10 +243,13 @@ def main():
         # This would allow some highly efficient matrix multiplication to calculate all the distances at once instead of doing it in a loop like this
         distances = {}
         for training_sms, training_tf_idf in sms_tf_idf.items():
-            distances[training_sms] = calculate_n_dimensional_distance(training_tf_idf, tf_idf)
+            if USE_COSINE_SIMILARITY:
+                distances[training_sms] = calculate_cosine_similarity(training_tf_idf, tf_idf)
+            else:  # use euclidean distance
+                distances[training_sms] = calculate_n_dimensional_distance(training_tf_idf, tf_idf)
         # Sort dictionary by value and select the K lowest values
         # If spam/ham has the majority in the K lowest values, then that is our prediction
-        distances = dict(sorted(distances.items(), key=lambda item: item[1]))
+        distances = dict(sorted(distances.items(), key=lambda item: item[1], reverse=USE_COSINE_SIMILARITY))
         ham_count = 0
         spam_count = 0
         for distance_sms in list(distances.keys())[:K]:
